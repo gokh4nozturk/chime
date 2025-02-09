@@ -39,21 +39,6 @@ export async function GET() {
     }
 
     const timeEmoji = getTimeEmoji(currentHour);
-    const payload = JSON.stringify({
-      title: 'Horlog',
-      message: `${timeEmoji} Saat ${currentHour.toString().padStart(2, '0')}:${quarter.toString().padStart(2, '0')} periyodu başladı!`,
-      icon: '/icons/icon-192x192.svg',
-      badge: '/icons/icon-72x72.svg',
-      timestamp: now.getTime(),
-      vibrate: [200, 100, 200],
-      tag: 'horlog-notification',
-      actions: [
-        {
-          action: 'open',
-          title: 'Uygulamayı Aç'
-        }
-      ]
-    });
 
     // Tüm kayıtlı kullanıcılara bildirim gönder
     const notifications = (subscriptions as Subscription[]).map(sub => {
@@ -64,6 +49,23 @@ export async function GET() {
           p256dh: sub.p256dh,
         },
       };
+
+      const payload = JSON.stringify({
+        title: 'Horlog',
+        message: `${timeEmoji} Saat ${currentHour.toString().padStart(2, '0')}:${quarter.toString().padStart(2, '0')} periyodu başladı!`,
+        icon: '/icons/icon-192x192.svg',
+        badge: '/icons/icon-72x72.svg',
+        timestamp: now.getTime(),
+        vibrate: sub.preferences?.vibration_enabled ? [200, 100, 200] : undefined,
+        silent: !sub.preferences?.sound_enabled,
+        tag: 'horlog-notification',
+        actions: [
+          {
+            action: 'open',
+            title: 'Uygulamayı Aç'
+          }
+        ]
+      });
 
       return webpush.sendNotification(subscription, payload).catch(async error => {
         console.error('Notification not sent:', error);

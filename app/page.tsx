@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
+  const router = useRouter();
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [timeUntilNext, setTimeUntilNext] = useState('');
 
@@ -116,7 +118,7 @@ export default function Home() {
         
         <div className="text-center mb-8">
           <p className="text-6xl font-inter mb-2">{timeUntilNext}</p>
-          <p className="text-sm opacity-80">Time until the next 15 minute interval</p>
+          <p className="text-sm opacity-80">Sonraki 15 dakikalık periyoda kalan süre</p>
         </div>
 
         {!isSubscribed && (
@@ -124,14 +126,22 @@ export default function Home() {
             onClick={subscribeToNotifications}
             className="w-full bg-[#FFD700] text-[#1A237E] hover:bg-[#FFC700]"
           >
-            Allow Notifications
+            Bildirimleri Aç
           </Button>
         )}
 
         {isSubscribed && (
-          <p className="text-center text-sm opacity-80">
-            Notifications are active! I will notify you every 15 minutes.
-          </p>
+          <div className="space-y-4">
+            <p className="text-center text-sm opacity-80">
+              Bildirimler aktif! Her 15 dakikada bir sizi bilgilendireceğim.
+            </p>
+            <Button 
+              onClick={() => router.push('/settings')}
+              className="w-full bg-white/5 hover:bg-white/10"
+            >
+              Bildirimleri Özelleştir
+            </Button>
+          </div>
         )}
       </Card>
     </main>
