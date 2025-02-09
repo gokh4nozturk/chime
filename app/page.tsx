@@ -9,6 +9,18 @@ export default function Home() {
   const [timeUntilNext, setTimeUntilNext] = useState('');
 
   useEffect(() => {
+    // Service worker'ı register et
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then(
+        registration => {
+          console.log('Service worker registration succeeded:', registration);
+        },
+        error => {
+          console.log('Service worker registration failed:', error);
+        }
+      );
+    }
+
     // Service worker'ı kontrol et
     if ('serviceWorker' in navigator && 'Notification' in window) {
       navigator.serviceWorker.ready.then(registration => {
@@ -35,13 +47,47 @@ export default function Home() {
   const subscribeToNotifications = async () => {
     try {
       const registration = await navigator.serviceWorker.ready;
+      console.log('Service Worker Ready:', registration);
+      
+      // VAPID key'i base64'ten Uint8Array'e çevir
+      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      console.log('VAPID Public Key:', vapidPublicKey);
+
+      if (!vapidPublicKey) {
+        console.error('VAPID key is missing!');
+        throw new Error('VAPID public key is not configured');
+      }
+
+      function urlBase64ToUint8Array(base64String: string) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding)
+          .replace(/-/g, '+')
+          .replace(/_/g, '/');
+      
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+      
+        for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+      }
+
+      console.log('Converting VAPID key...');
+      const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+      console.log('Converted VAPID key:', convertedVapidKey);
+      
+      console.log('Requesting push subscription...');
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+        applicationServerKey: convertedVapidKey
       });
 
+      console.log('Push Subscription:', subscription);
+
       // Backend'e subscription bilgisini gönder
-      await fetch('/api/subscribe', {
+      console.log('Sending subscription to backend...');
+      const response = await fetch('/api/subscribe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -49,9 +95,17 @@ export default function Home() {
         body: JSON.stringify(subscription),
       });
 
+      const data = await response.json();
+      console.log('API Response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Subscription failed');
+      }
+
       setIsSubscribed(true);
     } catch (error) {
-      console.error('Bildirim izni alınamadı:', error);
+      console.error('Subscription error:', error);
+      alert(`Notification permission failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -62,7 +116,7 @@ export default function Home() {
         
         <div className="text-center mb-8">
           <p className="text-6xl font-inter mb-2">{timeUntilNext}</p>
-          <p className="text-sm opacity-80">Bir sonraki 15 dakikalık dilime kalan süre</p>
+          <p className="text-sm opacity-80">Time until the next 15 minute interval</p>
         </div>
 
         {!isSubscribed && (
@@ -70,13 +124,13 @@ export default function Home() {
             onClick={subscribeToNotifications}
             className="w-full bg-[#FFD700] text-[#1A237E] hover:bg-[#FFC700]"
           >
-            Bildirimleri Aç
+            Allow Notifications
           </Button>
         )}
 
         {isSubscribed && (
           <p className="text-center text-sm opacity-80">
-            Bildirimler aktif! Her 15 dakikada bir sizi uyaracağım.
+            Notifications are active! I will notify you every 15 minutes.
           </p>
         )}
       </Card>

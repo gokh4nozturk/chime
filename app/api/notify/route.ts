@@ -9,7 +9,7 @@ const vapidKeys = {
 };
 
 webpush.setVapidDetails(
-  'mailto:your-email@example.com',
+  'mailto:horlog@example.com',
   vapidKeys.publicKey,
   vapidKeys.privateKey
 );
@@ -32,7 +32,7 @@ export async function GET() {
 
     const payload = JSON.stringify({
       title: 'Horlog',
-      message: `Saat ${now.getHours()}:${quarter.toString().padStart(2, '0')} dilimi başladı!`,
+      message: `Hour ${now.getHours()}:${quarter.toString().padStart(2, '0')} interval started!`,
     });
 
     // Tüm kayıtlı kullanıcılara bildirim gönder
@@ -46,7 +46,7 @@ export async function GET() {
       };
 
       return webpush.sendNotification(subscription, payload).catch(async error => {
-        console.error('Bildirim gönderilemedi:', error);
+        console.error('Notification not sent:', error);
         
         if (error.statusCode === 410) {
           // Subscription artık geçerli değil, veritabanından sil
@@ -61,14 +61,14 @@ export async function GET() {
     await Promise.all(notifications);
 
     return NextResponse.json({ 
-      message: 'Bildirimler gönderildi',
+      message: 'Notifications sent',
       success: true,
       sent_count: notifications.length
     });
   } catch (error) {
-    console.error('Bildirim hatası:', error);
+    console.error('Notification error:', error);
     return NextResponse.json(
-      { error: 'Bildirimler gönderilemedi' },
+      { error: 'Notifications not sent' },
       { status: 500 }
     );
   }

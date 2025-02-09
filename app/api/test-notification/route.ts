@@ -9,7 +9,7 @@ const vapidKeys = {
 };
 
 webpush.setVapidDetails(
-  'mailto:your-email@example.com',
+  'mailto:horlog@example.com',
   vapidKeys.publicKey,
   vapidKeys.privateKey
 );
@@ -25,14 +25,14 @@ export async function GET() {
 
     if (!subscriptions?.length) {
       return NextResponse.json({ 
-        message: 'Henüz kayıtlı subscription yok',
+        message: 'No active subscriptions found',
         success: false
       });
     }
 
     const payload = JSON.stringify({
       title: 'Horlog Test',
-      message: 'Bu bir test bildirimidir! 🎉',
+      message: 'This is a test notification! 🎉',
     });
 
     // Tüm kayıtlı kullanıcılara test bildirimi gönder
@@ -46,7 +46,7 @@ export async function GET() {
       };
 
       return webpush.sendNotification(subscription, payload).catch(async error => {
-        console.error('Test bildirimi gönderilemedi:', error);
+        console.error('Test notification not sent:', error);
         
         if (error.statusCode === 410) {
           await supabase
@@ -60,14 +60,14 @@ export async function GET() {
     await Promise.all(notifications);
 
     return NextResponse.json({ 
-      message: 'Test bildirimleri gönderildi',
+      message: 'Test notifications sent',
       success: true,
       sent_count: notifications.length
     });
   } catch (error) {
-    console.error('Test bildirim hatası:', error);
+    console.error('Test notification error:', error);
     return NextResponse.json(
-      { error: 'Test bildirimleri gönderilemedi' },
+      { error: 'Test notifications not sent' },
       { status: 500 }
     );
   }

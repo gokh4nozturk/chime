@@ -5,12 +5,16 @@ import { cookies } from 'next/headers';
 import { v4 as uuidv4 } from 'uuid';
 
 const vapidKeys = {
-  publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  privateKey: process.env.VAPID_PRIVATE_KEY!,
+  publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '',
+  privateKey: process.env.VAPID_PRIVATE_KEY || '',
 };
 
+if (!vapidKeys.publicKey || !vapidKeys.privateKey) {
+  throw new Error('VAPID keys are not configured');
+}
+
 webpush.setVapidDetails(
-  'mailto:your-email@example.com',
+  'mailto:horlog@example.com',
   vapidKeys.publicKey,
   vapidKeys.privateKey
 );
@@ -18,19 +22,13 @@ webpush.setVapidDetails(
 export async function POST(request: Request) {
   try {
     const subscription = await request.json();
-    const userId = cookies().get('user_id')?.value || uuidv4();
-
-    // Yeni kullanıcı ise cookie oluştur
-    if (!cookies().get('user_id')) {
-      cookies().set('user_id', userId);
-    }
 
     // Subscription'ı veritabanına kaydet
     const { error } = await supabase
       .from('subscriptions')
       .upsert({
         id: uuidv4(),
-        user_id: userId,
+        user_id: uuidv4(),
         endpoint: subscription.endpoint,
         auth: subscription.keys.auth,
         p256dh: subscription.keys.p256dh,
@@ -47,20 +45,19 @@ export async function POST(request: Request) {
     // Test bildirimi gönder
     const payload = JSON.stringify({
       title: 'Horlog',
-      message: 'Bildirimler başarıyla aktifleştirildi!',
+      message: 'Notifications activated successfully!',
     });
 
     await webpush.sendNotification(subscription, payload);
 
     return NextResponse.json({ 
-      message: 'Subscription başarıyla kaydedildi',
-      success: true,
-      user_id: userId
+      message: 'Subscription saved successfully',
+      success: true
     });
   } catch (error) {
-    console.error('Subscription hatası:', error);
+    console.error('Subscription error:', error);
     return NextResponse.json(
-      { error: 'Subscription kaydedilemedi' },
+      { error: 'Subscription not saved' },
       { status: 500 }
     );
   }
