@@ -21,6 +21,24 @@ export async function GET() {
     const minutes = now.getMinutes();
     const quarter = Math.floor(minutes / 15) * 15;
 
+    // Aktif cron jobları getir
+    const { data: cronJobs, error: cronError } = await supabase
+      .from('cron_jobs')
+      .select('*')
+      .eq('is_active', true)
+      .eq('hour', currentHour)
+      .eq('minute', quarter);
+
+    if (cronError) throw cronError;
+
+    if (!cronJobs || cronJobs.length === 0) {
+      return NextResponse.json({ 
+        message: 'No active cron jobs found for this time',
+        success: true,
+        sent_count: 0
+      });
+    }
+
     // Aktif subscriptionları getir
     const { data: subscriptions, error } = await supabase
       .from('subscriptions')
@@ -59,6 +77,15 @@ export async function GET() {
     });
 
     await Promise.all(notifications);
+
+    // Cron job çalışma kaydını güncelle
+    await supabase
+      .from('cron_jobs')
+      .update({ 
+        last_run: new Date().toISOString(),
+        run_count: cronJobs[0].run_count + 1 || 1
+      })
+      .eq('id', cronJobs[0].id);
 
     return NextResponse.json({ 
       message: 'Notifications sent',
