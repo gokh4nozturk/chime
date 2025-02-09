@@ -1,4 +1,4 @@
-self.addEventListener('push', function(event) {
+self.addEventListener('push', (event) =>{
   const options = {
     body: event.data.text(),
     icon: '/icons/icon-192x192.png',
@@ -21,7 +21,7 @@ self.addEventListener('push', function(event) {
   );
 });
 
-self.addEventListener('notificationclick', function(event) {
+self.addEventListener('notificationclick', (event) =>{
   event.notification.close();
 
   if (event.action === 'close') {

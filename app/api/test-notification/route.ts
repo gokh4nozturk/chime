@@ -16,26 +16,26 @@ webpush.setVapidDetails(
 
 export async function GET() {
   try {
-    const now = new Date();
-    const currentHour = now.getHours();
-    const minutes = now.getMinutes();
-    const quarter = Math.floor(minutes / 15) * 15;
-
-    // Aktif subscriptionları getir
+    // Tüm aktif subscriptionları getir
     const { data: subscriptions, error } = await supabase
       .from('subscriptions')
-      .select('*')
-      .gte('preferences->start_hour', currentHour)
-      .lte('preferences->end_hour', currentHour);
+      .select('*');
 
     if (error) throw error;
 
+    if (!subscriptions?.length) {
+      return NextResponse.json({ 
+        message: 'Henüz kayıtlı subscription yok',
+        success: false
+      });
+    }
+
     const payload = JSON.stringify({
-      title: 'Horlog',
-      message: `Saat ${now.getHours()}:${quarter.toString().padStart(2, '0')} dilimi başladı!`,
+      title: 'Horlog Test',
+      message: 'Bu bir test bildirimidir! 🎉',
     });
 
-    // Tüm kayıtlı kullanıcılara bildirim gönder
+    // Tüm kayıtlı kullanıcılara test bildirimi gönder
     const notifications = (subscriptions as Subscription[]).map(sub => {
       const subscription = {
         endpoint: sub.endpoint,
@@ -46,10 +46,9 @@ export async function GET() {
       };
 
       return webpush.sendNotification(subscription, payload).catch(async error => {
-        console.error('Bildirim gönderilemedi:', error);
+        console.error('Test bildirimi gönderilemedi:', error);
         
         if (error.statusCode === 410) {
-          // Subscription artık geçerli değil, veritabanından sil
           await supabase
             .from('subscriptions')
             .delete()
@@ -61,14 +60,14 @@ export async function GET() {
     await Promise.all(notifications);
 
     return NextResponse.json({ 
-      message: 'Bildirimler gönderildi',
+      message: 'Test bildirimleri gönderildi',
       success: true,
       sent_count: notifications.length
     });
   } catch (error) {
-    console.error('Bildirim hatası:', error);
+    console.error('Test bildirim hatası:', error);
     return NextResponse.json(
-      { error: 'Bildirimler gönderilemedi' },
+      { error: 'Test bildirimleri gönderilemedi' },
       { status: 500 }
     );
   }
