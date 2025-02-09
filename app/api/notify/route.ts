@@ -21,24 +21,6 @@ export async function GET() {
     const minutes = now.getMinutes();
     const quarter = Math.floor(minutes / 15) * 15;
 
-    // Aktif cron jobları getir
-    const { data: cronJobs, error: cronError } = await supabase
-      .from('cron_jobs')
-      .select('*')
-      .eq('is_active', true)
-      .eq('hour', currentHour)
-      .eq('minute', quarter);
-
-    if (cronError) throw cronError;
-
-    if (!cronJobs || cronJobs.length === 0) {
-      return NextResponse.json({ 
-        message: 'No active cron jobs found for this time',
-        success: true,
-        sent_count: 0
-      });
-    }
-
     // Aktif subscriptionları getir
     const { data: subscriptions, error } = await supabase
       .from('subscriptions')
@@ -48,9 +30,29 @@ export async function GET() {
 
     if (error) throw error;
 
+    if (!subscriptions?.length) {
+      return NextResponse.json({ 
+        message: 'No active subscriptions found',
+        success: false,
+        current_time: `${currentHour}:${quarter}`
+      });
+    }
+
+    const timeEmoji = getTimeEmoji(currentHour);
     const payload = JSON.stringify({
       title: 'Horlog',
-      message: `Hour ${now.getHours()}:${quarter.toString().padStart(2, '0')} interval started!`,
+      message: `${timeEmoji} Saat ${currentHour.toString().padStart(2, '0')}:${quarter.toString().padStart(2, '0')} periyodu başladı!`,
+      icon: '/icons/icon-192x192.svg',
+      badge: '/icons/icon-72x72.svg',
+      timestamp: now.getTime(),
+      vibrate: [200, 100, 200],
+      tag: 'horlog-notification',
+      actions: [
+        {
+          action: 'open',
+          title: 'Uygulamayı Aç'
+        }
+      ]
     });
 
     // Tüm kayıtlı kullanıcılara bildirim gönder
@@ -78,19 +80,11 @@ export async function GET() {
 
     await Promise.all(notifications);
 
-    // Cron job çalışma kaydını güncelle
-    await supabase
-      .from('cron_jobs')
-      .update({ 
-        last_run: new Date().toISOString(),
-        run_count: cronJobs[0].run_count + 1 || 1
-      })
-      .eq('id', cronJobs[0].id);
-
     return NextResponse.json({ 
       message: 'Notifications sent',
       success: true,
-      sent_count: notifications.length
+      sent_count: notifications.length,
+      current_time: `${currentHour}:${quarter}`
     });
   } catch (error) {
     console.error('Notification error:', error);
@@ -99,4 +93,11 @@ export async function GET() {
       { status: 500 }
     );
   }
+}
+
+function getTimeEmoji(hour: number): string {
+  if (hour >= 6 && hour < 12) return '🌅';
+  if (hour >= 12 && hour < 18) return '☀️';
+  if (hour >= 18 && hour < 22) return '��';
+  return '🌙';
 } 
